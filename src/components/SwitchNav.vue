@@ -5,7 +5,7 @@
         {{this.$store.state.buttonText}}
       </div>
       <div class="feng-flex__item" @click="NewAttention">
-        <router-link to="/" class="feng-link" >
+        <router-link to="/AttentionDormitory" class="feng-link" >
           新关注
          </router-link>
       </div>
@@ -31,10 +31,12 @@ export default {
     NewAttention () {
       this.$store.commit('changeAttentionState', false)
       this.$store.commit('changeButtonText', '新关注')
+      this.$store.commit('update_hasAttention', 0)
     },
     HadAttention () {
       this.$store.commit('changeAttentionState', true)
       this.$store.commit('changeButtonText', '已关注')
+      this.$store.commit('update_hasAttention', 1)
     }
   }
 

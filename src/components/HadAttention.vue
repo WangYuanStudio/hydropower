@@ -1,20 +1,26 @@
 <template>
   <ul class="ul-total">
-    <li class="attention-info" v-for="(item,index) in data" :key="index">
-      <van-icon name="delete" color="#4ea3ee" class="move" @click="deleteItem(index)"  />
-      <van-icon name="wap-home" color="#c8c8c8" class="changeStlye"  />
-      {{item.room}}
-      <p>
-        当余额低于 <span class="blueColor">{{item.threshold}}</span> 元时发出充值提醒
-      </p>
+    <li class="attention-info" v-for="(item,index) in data" :key="index" >
+      <van-icon name="delete" color="#4ea3ee" class="move" @click="deleteItem(item.id,index)"  />
+      <div class="marginRight"  @click="changeThreshold(item.id,item.threshold,index)">
+        <van-icon name="wap-home" color="#c8c8c8" class="changeStlye"  />
+        {{item.room}}
+        <p class="addTop" >
+          当余额低于 <span class="blueColor">{{item.threshold}}</span> 元时发出充值提醒
+        </p>
+      </div>
     </li>
   </ul>
 </template>
 
 <script>
-
+import axios from 'axios'
 import 'weui'
+import {thresholdData} from '../../data.js'
 import weui from 'weui.js'
+import {errorHandler} from '../common/errorHandler.js'
+import {commonAlert} from '../common/commonFun.js'
+import {ApiUrl} from '../common/config.js'
 export default {
   name: 'HadAttemtion',
   data () {
@@ -24,52 +30,44 @@ export default {
     }
   },
   methods: {
-    deleteItem (index) {
+    deleteItem (id, index) {
       let self = this
       weui.confirm('取消关注后将不再收到有关水电余额的推送提醒', {
         title: '确定取消关注',
         buttons: [{
           label: '取消',
           type: 'default',
-          onClick: function () { console.log('no') }
+          onClick: () => { console.log('no') }
         }, {
           label: '确定',
           type: 'primary',
-          onClick: function () {
+          onClick: () => {
             self.axios({
-              methods: 'DELETE',
-              url: 'subscribe',
-              params: {
-                open_id: localStorage.getItem('open_id'),
-                subscribe_id: index
+              method: 'DELETE',
+              url: ApiUrl + '/star/' + id,
+              headers: {
+                token: self.$store.state.token
               }
-            }).then(function (res) {
-              if (res.data.code === 200) {
-                self.$delete(self.data, index)
+            }).then((res) => {
+              if (res.data.error === 0) {
+                // self.fetchData()
+                this.data.splice(index, 1)
                 weui.toast('取消关注成功', {
-                  duration: 3000,
+                  duration: 800,
                   className: 'success',
                   callback: function () { console.log('close') }
                 })
               } else {
-                weui.alert('没有已关注的宿舍或发生异常了', {
-                  title: '查询失败',
-                  buttons: [{
-                    label: '确定',
-                    type: 'primary',
-                    onClick: function () { console.log('ok') }
-                  }]
+                errorHandler(res.data.error, (errorMsg) => {
+                  if (res.data.error === 1002) {
+                    self.$toast(errorMsg)
+                  } else {
+                    commonAlert('取消关注失败', errorMsg)
+                  }
                 })
               }
             }).catch(function (error) {
-              weui.alert('不存在的关注事件编号或发生异常了', {
-                title: '查询失败',
-                buttons: [{
-                  label: '确定',
-                  type: 'primary',
-                  onClick: function () { console.log('ok') }
-                }]
-              })
+              commonAlert('取消关注失败', '未知异常')
               console.log(error)
             })
           }
@@ -80,46 +78,114 @@ export default {
       let self = this
       this.axios({
         method: 'get',
-        url: '/subscribe',
-        params: {
-          open_id: localStorage.getItem('open_id')
+        url: ApiUrl + '/star',
+        headers: {
+          token: self.$store.state.token
         }
       }).then(function (res) {
-        if (res.data.code === 200) {
+        if (res.data.error === 0) {
           self.data = res.data.data
-          for (let x in self.data) {
-            self.data[x].room = self.data[x].room.replace(/-/g, '栋')
-          }
+          // for (let x in self.data) {
+          //   // self.data[x].room = self.data[x].room.replace(/-/g, '栋')
+          // }
         } else {
-          weui.alert('发生异常了', {
-            title: '查询失败',
-            buttons: [{
-              label: '确定',
-              type: 'primary',
-              onClick: function () { console.log('ok') }
-            }]
+          errorHandler(res.data.error, (errorMsg) => {
+            if (res.data.error === 1002) {
+              self.$toast(errorMsg)
+            } else {
+              commonAlert('获取信息失败', errorMsg)
+            }
           })
         }
       }).catch(function (error) {
-        weui.alert('发生异常了', {
-          title: '查询失败',
-          buttons: [{
-            label: '确定',
-            type: 'primary',
-            onClick: function () { console.log('ok') }
-          }]
-        })
+        commonAlert('获取信息失败', '未知异常')
         console.log(error)
+      })
+    },
+    changeThreshold (id, threshold, index) {
+      let self = this
+      weui.confirm('确定修改预警余额', {
+        title: '确定修改',
+        buttons: [{
+          label: '取消',
+          type: 'default',
+          onClick: () => { console.log('no') }
+        }, {
+          label: '确定',
+          type: 'primary',
+          onClick: () => {
+            weui.picker(thresholdData, {
+              className: 'ignore',
+              container: 'body',
+              defaultValue: [10],
+              onChange: (result) => {
+              },
+              onConfirm: (result) => {
+                let newThreshold = result[0].value
+                if (newThreshold === threshold) {
+                  commonAlert('修改失败', '不能与第一次设置的预警余额相同')
+                } else {
+                  axios({
+                    method: 'put',
+                    url: ApiUrl + '/star',
+                    headers: {
+                      token: self.$store.state.token
+                    },
+                    data: {
+                      threshold: newThreshold,
+                      star_id: id
+                    }
+                  }).then((res) => {
+                    if (res.data.error === 0) {
+                      this.$set(this.data[index], 'threshold', newThreshold)
+                      weui.toast('修改成功', {
+                        duration: 800,
+                        className: 'success',
+                        callback: function () { console.log('close') }
+                      })
+                    } else {
+                      errorHandler(res.data.error, (errorMsg) => {
+                        if (res.data.error === 1002) {
+                          self.$toast(errorMsg)
+                        } else {
+                          commonAlert('修改失败', errorMsg)
+                        }
+                      })
+                    }
+                  }).catch((error) => {
+                    console.log(error)
+                  })
+                }
+              },
+              id: 'thresholdPicker'
+            })
+          }
+        }]
       })
     }
   },
   created () {
+    if (sessionStorage.getItem('isFirst') === null) {
+      this.$toast('点击框内文字区域可修改预警余额')
+      sessionStorage.setItem('isFirst', 1)
+    }
+    // weui.topTips('点击可修改预警余额提醒', {
+    //   duration: 3000,
+    //   className: 'tipHanle',
+    //   callback: function () { console.log('close') }
+    // })
     this.fetchData()
   }
 }
 </script>
 
 <style scoped>
+  .marginRight{
+    margin-right: 130px;
+  }
+  .addTop{
+    margin-top:10px
+  }
   .attention-info{
     width: 653px;
     height: 156px;

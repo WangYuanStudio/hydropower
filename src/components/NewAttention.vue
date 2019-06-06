@@ -17,16 +17,16 @@
         <div class="weui-cell" >
           <div class="weui-cell__hd"><label class="weui-label">宿舍号</label></div>
           <div class="weui-cell__bd">
-            <input class="weui-input marginRight" v-model="room1"  minlength="3"  maxlength="3"   placeholder="如505"/>
+            <input class="weui-input marginRight" @blur="handleBlur" v-model="room1"   maxlength="3"  type="tel"  placeholder="如505"/>
           </div>
         </div>
         <div class="weui-cell addHeight">
           <div class="weui-cell__hd">
-            <label for="" class="weui-label widthAuto">余额提醒</label>
+            <label for="" style=" margin-top: -20px;" class="weui-label top widthAuto">余额提醒</label>
           </div>
           <div class="weui-cell__bd marginTop">
             <van-radio-group v-model="radio">
-              <div class="weui-flex chooseHow">
+              <div class="weui-flex marginBottom chooseHow">
                 <div class="weui-flex__item">
                   <div class="placeholder">
                     <van-radio name="5">5元</van-radio>
@@ -43,7 +43,7 @@
                   </div>
                 </div>
               </div>
-              <div class="weui-flex chooseHow">
+              <div class="weui-flex  chooseHow">
                 <div class="weui-flex__item">
                   <div class="placeholder">
                     <van-radio name="20">20元</van-radio>
@@ -75,6 +75,11 @@
 import 'weui'
 import weui from 'weui.js'
 import 'vant/lib/vant-css/icon-local.css'
+import axios from 'axios'
+import {errorHandler} from '../common/errorHandler.js'
+import {commonAlert} from '../common/commonFun.js'
+import {scrollTo} from '../utils/scrollSmooth.js'
+import {ApiUrl} from '../common/config.js'
 export default {
   name: 'NewAttention',
   props: {
@@ -86,7 +91,8 @@ export default {
     return {
       // district: '', // 苑区
       radio: '5',
-      loading: false
+      loading: false,
+      room_name: ''
     }
   },
   computed: {
@@ -96,10 +102,15 @@ export default {
       },
       set (value) {
         this.$store.commit('updateRoom', value)
+        localStorage.setItem('room', value)
+        // this.$store.commit('change_room', this.$store.state.some + value)
       }
     }
   },
   methods: {
+    handleBlur () {
+      scrollTo(0, 1200)
+    },
     getDistrict () {
       let self = this
       weui.picker(this.dormitoryData, {
@@ -109,94 +120,154 @@ export default {
         onChange: function (result) {
         },
         onConfirm: function (result) {
-          self.$store.commit('changeBuilding', result[2].value)
+          console.log(result)
+          self.$store.commit('change_some', result[2].label)
+          localStorage.setItem('some', result[2].label)
+          // self.$store.commit('changeBuilding', result[2].value)
           self.$store.commit('change_dormitory_name', result[1].label)
           self.$store.commit('changeDistrict', result[0].label + result[2].label)
-          self.$store.commit('changeId', result[2].id)
+          // 公寓id
+          self.$store.commit('changeId', result[2].value)
+
+          localStorage.setItem('district', result[0].label + result[2].label)
+          localStorage.setItem('apartment_id', result[2].value)
+          localStorage.setItem('dormitory_name', result[1].label)
         },
         id: 'doubleLinePicker'
       })
     },
+    findBalance () {
+      let self = this
+      let result = this.axios({
+        method: 'get',
+        url: ApiUrl + '/balance',
+        headers: {
+          token: self.$store.state.token
+        },
+        params: {
+          buildno: self.$store.state.apartment_id,
+          roomno: self.$store.state.room
+        }
+      })
+      return result
+    },
     newAttention () {
       let self = this
       if (this.$store.state.room !== '' && this.$store.state.district !== '') {
-        weui.confirm('当关注目标宿舍的水费或电费低于设定值将会通过微信推送提醒给您', {
-          title: '确定关注',
-          buttons: [{
-            label: '取消',
-            type: 'default',
-            onClick: function () { console.log('no') }
-          }, {
-            label: '确定',
-            type: 'primary',
-            onClick: function () {
-              self.loading = true
-              self.axios({
-                methods: 'post',
-                url: '/subscribe',
-                params: {
-                  open_id: localStorage.getItem('open_id'),
-                  apartment_id: self.$store.state.apartment_id,
-                  room_name: self.$store.state.building + '-' + self.$store.state.room,
+        let result = this.findBalance()
+        self.loading = true
+        result.then((res) => {
+          if (res.data.error === 0) {
+            if (res.data.data.water === '0.01' && res.data.data.water === '0.01') {
+              self.loading = false
+              commonAlert('关注宿舍失败', '该宿舍不存在')
+            } else {
+              // weui.confirm('当关注目标宿舍的水费或电费低于设定值将会通过微信推送提醒给您', {
+              //   title: '确定关注',
+              //   buttons: [{
+              //     label: '取消',
+              //     type: 'default',
+              //     onClick: function () { console.log('no') }
+              //   }, {
+              //     label: '确定',
+              //     type: 'primary',
+              //     onClick: function () {
+              axios({
+                method: 'post',
+                url: ApiUrl + '/star',
+                headers: {
+                  token: self.$store.state.token
+                },
+                data: {
+                  buildno: self.$store.state.apartment_id,
+                  roomno: self.$store.state.room,
+                  room: self.$store.state.some + self.$store.state.room,
                   threshold: self.radio
                 }
 
               }).then(function (res) {
                 self.loading = false
-                if (res.data.code === 200) {
+                if (res.data.error === 0) {
                   weui.toast('关注成功', {
-                    duration: 3000,
+                    duration: 800,
                     className: 'success',
                     callback: function () { console.log('close') }
                   })
                   // 储存宿舍的必要信息
-                  localStorage.setItem('district', self.$store.state.district)
-                  localStorage.setItem('apartment_id', self.$store.state.apartment_id)
-                  localStorage.setItem('building', self.$store.state.building)
-                  localStorage.setItem('room', self.$store.state.room)
-                  localStorage.setItem('dormitory_name', self.$store.state.dormitory_name)
-                } else if (res.data.code === 1003) {
-                  weui.alert('关注宿舍失败，不存在该宿舍', {
-                    title: '关注失败',
-                    buttons: [{
-                      label: '确定',
-                      type: 'primary',
-                      onClick: function () { console.log('ok') }
-                    }]
-                  })
-                } else if (res.data.code === 1005) {
-                  weui.alert('关注宿舍失败，已关注过该宿舍', {
-                    title: '关注失败',
-                    buttons: [{
-                      label: '确定',
-                      type: 'primary',
-                      onClick: function () { console.log('ok') }
-                    }]
-                  })
+                  // localStorage.setItem('building', self.$store.state.building)
+                  // localStorage.setItem('full_name', self.$store.state.full_name)
                 } else {
-                  weui.alert('关注宿舍失败，发生异常了', {
-                    title: '关注失败',
-                    buttons: [{
-                      label: '确定',
-                      type: 'primary',
-                      onClick: function () { console.log('ok') }
-                    }]
+                  errorHandler(res.data.error, (errorMsg) => {
+                    if (res.data.error === 1002) {
+                      self.$toast(errorMsg)
+                    } else if (res.data.error === 1005) {
+                      // 已经关注过该宿舍,询问是否覆盖
+                      weui.confirm('已关注过该宿舍,可继续修改余额提醒，是否修改', {
+                        title: '确定修改',
+                        buttons: [{
+                          label: '取消',
+                          type: 'default',
+                          onClick: () => { console.log('no') }
+                        }, {
+                          label: '确定',
+                          type: 'primary',
+                          onClick: () => {
+                            axios({
+                              method: 'put',
+                              url: ApiUrl + '/star',
+                              headers: {
+                                token: self.$store.state.token
+                              },
+                              data: {
+                                threshold: self.radio,
+                                star_id: res.data.data
+                              }
+                            }).then((res) => {
+                              if (res.data.error === 0) {
+                                weui.toast('修改成功', {
+                                  duration: 800,
+                                  className: 'success',
+                                  callback: function () { console.log('close') }
+                                })
+                              } else {
+                                errorHandler(res.data.error, (errorMsg) => {
+                                  if (res.data.error === 1002) {
+                                    self.$toast(errorMsg)
+                                  } else {
+                                    commonAlert('修改失败', errorMsg)
+                                  }
+                                })
+                              }
+                            }).catch((error) => {
+                              console.log(error)
+                            })
+                          }
+                        }]
+                      })
+                    } else {
+                      commonAlert('关注宿舍失败', errorMsg)
+                    }
                   })
                 }
               }).catch(function (error) {
                 self.loading = false
                 console.log(error)
-                weui.alert('关注宿舍失败，发生异常了', {
-                  title: '关注失败',
-                  buttons: [{
-                    label: '确定',
-                    type: 'primary',
-                    onClick: function () { console.log('ok') }
-                  }]
-                })
+                commonAlert('关注宿舍失败', '未知异常')
               })
+              //     }
+              //   }]
+              // })
             }
-          }]
+          } else {
+            self.loading = false
+            errorHandler(res.data.error, (errorMsg) => {
+              if (res.data.error === 1002) {
+                self.$toast(errorMsg)
+              } else {
+                commonAlert('验证宿舍失败', errorMsg + ',请重试')
+              }
+            })
+          }
         })
       } else {
         weui.topTips('请选择苑区或填写宿舍号！', {
@@ -267,6 +338,7 @@ export default {
     width: 100%;
 
   }
+
   .weui-cell__hd .widthAuto{
     width: auto !important;
   }
@@ -281,8 +353,11 @@ export default {
     margin-top:30px;
   }
   .addHeight{
-    height: 140px;
-    padding-bottom: 40px;
+    height: 190px;
+    padding-bottom: 50px;
+  }
+  .marginBottom{
+    margin-bottom: 40px;
   }
 
 </style>

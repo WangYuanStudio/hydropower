@@ -5,12 +5,14 @@ import App from './App'
 import router from './router'
 import 'weui'
 import '../static/font/iconfont.css'
-import { RadioGroup, Radio, Icon } from 'vant'
+import { RadioGroup, Radio, Icon, Toast } from 'vant'
 import axios from 'axios'
 import VueAxios from 'vue-axios'
 import 'es6-promise/auto'
 import Vuex from 'vuex'
 import 'vant/lib/vant-css/icon-local.css'
+
+Vue.use(Toast)
 Vue.use(Icon)
 Vue.use(RadioGroup)
 Vue.use(Radio)
@@ -52,6 +54,18 @@ const store = new Vuex.Store({
     },
     changeButtonText (state, newValue) {
       state.buttonText = newValue
+    },
+    change_room (state, newValue) {
+      state.full_name = newValue
+    },
+    change_some (state, newValue) {
+      state.some = newValue
+    },
+    update_token (state, newValue) {
+      state.token = newValue
+    },
+    update_hasAttention (state, newValue) {
+      state.hasAttention = newValue
     }
   }
 })
@@ -60,10 +74,12 @@ router.beforeEach((to, from, next) => {
   if (to.fullPath === '/AttentionDormitory/HadAttention') {
     store.commit('changeAttentionState', true)
     store.commit('changeButtonText', '已关注')
+    store.commit('update_hasAttention', 1)
   }
   if (to.fullPath === '/AttentionDormitory') {
     store.commit('changeAttentionState', false)
     store.commit('changeButtonText', '新关注')
+    store.commit('update_hasAttention', 0)
   }
   next()
 })

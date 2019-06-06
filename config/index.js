@@ -18,17 +18,21 @@ module.exports = {
       //     '^/openid':''
       //   }
       // },
-      '/':{
-        target:' http://localhost:3000/',
-        changeOrigin:true,
-        pathRewrite:{
-          '^/':''
-        }
+
+      // '/':{
+      //   target:' http://localhost:3000/',
+      //   changeOrigin:true,
+      //   pathRewrite:{
+      //     '^/':''
+      //   }
+        '/':{
+          target:'https://web.test.wangyuan.info/hydropower_lumen/public/index.php',
+          changeOrigin:true
       }
     },
 
     // Various Dev Server settings
-    host: '192.168.191.1', // can be overwritten by process.env.HOST
+    host: 'localhost', // can be overwritten by process.env.HOST
     port: 80, // can be overwritten by process.env.PORT, if port is in use, a free one will be determined
     autoOpenBrowser: false,
     errorOverlay: true,
@@ -71,7 +75,7 @@ module.exports = {
      * Source Maps
      */
 
-    productionSourceMap: true,
+    productionSourceMap: false,
     // https://webpack.js.org/configuration/devtool/#production
     devtool: '#source-map',
 
@@ -79,7 +83,7 @@ module.exports = {
     // Surge or Netlify already gzip all static assets for you.
     // Before setting to `true`, make sure to:
     // npm install --save-dev compression-webpack-plugin
-    productionGzip: false,
+    productionGzip: true,
     productionGzipExtensions: ['js', 'css'],
 
     // Run the build command with an extra argument to
