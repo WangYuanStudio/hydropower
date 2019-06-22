@@ -158,7 +158,7 @@ export default {
         self.loading = true
         result.then((res) => {
           if (res.data.error === 0) {
-            if (res.data.data.water === '0.01' && res.data.data.water === '0.01') {
+            if (res.data.data.power === '0.01' && res.data.data.water === '0.01') {
               self.loading = false
               commonAlert('关注宿舍失败', '该宿舍不存在')
             } else {

@@ -135,7 +135,7 @@ export default {
           // localStorage.setItem('dormitory_name', self.$store.state.dormitory_name)
           // localStorage.setItem('full_name', self.$store.state.full_name)
           if (res.data.error === 0) {
-            if (res.data.data.water === '0.01' && res.data.data.water === '0.01') {
+            if (res.data.data.power === '0.01' && res.data.data.water === '0.01') {
               commonAlert('查询失败', '该宿舍不存在')
             } else {
               self.show = true
