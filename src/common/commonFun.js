@@ -5,7 +5,7 @@ import {ApiUrl} from './config'
 const commonBlock = function () {
   let count = sessionStorage.getItem('count')
   if (count !== null) {
-    //window.location.href = ApiUrl + '/error'
+    window.location.href = ApiUrl + '/error'
     // window.location.href = 'www.baidu.'
   } else {
     sessionStorage.setItem('count', 1)
